@@ -1,23 +1,22 @@
 import gymnasium as gym
 import ale_py
-import msvcrt # Windows-specific library for non-blocking keyboard input
+import msvcrt
 import time
 
 # --- Configuration ---
 env_id = 'ALE/KungFuMaster-v5'
-RENDER_MODE = "human" # Set to "rgb_array" if the window doesn't show (see previous step)
+RENDER_MODE = "human"
 
-# --- Action Mapping (Based on your documentation) ---
+# --- Action Mapping ---
 key_to_action = {
     b'w': 1,    # UP
     b'a': 3,    # LEFT
     b'd': 2,    # RIGHT
     b's': 4,    # DOWN
-    b'e': 7,    # RIGHTFIRE (assuming E is the primary attack key/combo)
-    b'q': 8,    # LEFTFIRE (assuming Q is the primary attack key/combo)
+    b'e': 7,    # RIGHTFIRE 
+    b'q': 8,    # LEFTFIRE
     b' ': 0,    # NOOP (Spacebar)
 }
-# --- End Configuration ---
 
 gym.register_envs(ale_py)
 
@@ -29,20 +28,16 @@ try:
 
     terminated = False
     truncated = False
+
+    action = 0  # start with NOOP (Action 0)
     
     while not (terminated or truncated):
-        action = 0  # Default to NOOP (Action 0)
-        
         # 2. Check for keyboard input non-blockingly
         if msvcrt.kbhit():
             key = msvcrt.getch()
-            
-            # Check for quit command
             if key == b'x':
                 print("\nQuitting game on user request.")
                 break
-            
-            # Check for reset command
             if key == b'r':
                 print("\nResetting environment...")
                 observation, info = env.reset()
@@ -58,22 +53,19 @@ try:
         
         # 3. Take the step using the determined action (keyboard input or default 0)
         observation, reward, terminated, truncated, info = env.step(action)
+        print(info)
         
-        # Displaying output every 10 steps to prevent screen spam, or when an action is taken
         if action != 0 or msvcrt.kbhit():
              print(f"Step {info.get('lives', 'N/A')}: Reward={reward:.1f}, Action taken: {action}")
 
-
-        # 4. Handle episode end
         if terminated or truncated:
             print("Episode ended naturally. Resetting...")
             observation, info = env.reset()
 
         # Essential: Slow down the loop slightly for playability and rendering updates
-        time.sleep(0.05) 
+        time.sleep(0.1) 
 
 finally:
-    # 5. Clean up
     if 'env' in locals() and env:
         env.close()
         print("Game session ended.")
