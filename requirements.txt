@@ -1,2 +1,5 @@
+opencv-python
+numpy
+torch
 gymnasium[atari]
-python-dotenv
+ale-py

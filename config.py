@@ -1,21 +1,46 @@
 import os
-from dotenv import load_dotenv
 import torch
 
-load_dotenv()
-
 # --- Environment Settings ---
-ENV_ID = os.getenv('env_id', "ALE/KungFuMaster-v5")
-NUM_FRAMES = os.getenv('num_frames', 4)           # Number of frames to stack (for motion detection)
-FRAME_WIDTH = os.getenv('frame_width', 84)           # Resized image width
-FRAME_HEIGHT = os.getenv('frame_height', 84)         # Resized image height
-RENDER_MODE_AGENT = os.getenv('render_mode_agent', "rgb_array")
+ENV_ID = "ALE/KungFuMaster-v5"
+FRAME_WIDTH = 84           # Resized image width
+FRAME_HEIGHT = 84         # Resized image height
+RENDER_MODE_AGENT = "rgb_array"
 
 # --- Frame stack and skip ---
-FRAME_STACK_K = int(os.getenv('frame_stack_k', 4))    # Number of frames to stack for RL agent
-FRAME_SKIP = int(os.getenv('frame_skip', 4))          # Number of frames to skip per action
+FRAME_STACK_K = 4    # Number of frames to stack for RL agent
+FRAME_SKIP = 4       # Number of frames to skip per action
 
 # --- base game ui | for human ---
-RENDER_MODE_HUMAN = os.getenv('render_mode_human', "human")
-STEP_DELAY = os.getenv('step_delay', 0.05)
-DEFAULT_ACTION = os.getenv('default_action', 3)
+RENDER_MODE_HUMAN = "human"
+STEP_DELAY = 0.05
+DEFAULT_ACTION = 3
+
+# --- CNN Hyperparameters ---
+NUM_FRAMES = 4          # Number of frames to stack (for motion detection)
+CONV_OUT_CHANNELS = [32, 64, 64]
+CONV_KERNELS = [8, 4, 3]
+CONV_STRIDEs = [4, 2, 1]
+FC_UNITS = 512
+CONV_OUT_SIZE = CONV_OUT_CHANNELS[2] * \
+                (((((FRAME_HEIGHT - CONV_KERNELS[0]) // CONV_STRIDEs[0] + 1) - CONV_KERNELS[1]) // CONV_STRIDEs[1] + 1
+                  - CONV_KERNELS[2]) // CONV_STRIDEs[2] + 1) ** 2
+
+# --- DQN Hyperparameters ---
+BUFFER_SIZE = 500000
+BATCH_SIZE = 32               # Number of samples to draw from the buffer for learning
+GAMMA = 0.99                  # Discount factor
+LEARNING_RATE = 0.0000625
+TARGET_UPDATE_FREQ = 10000    # Frequency (in steps) of updating the target network
+TRAINING_STARTS = 32       # Number of random steps before training begins
+TOTAL_TIMESTEPS = 10000000 
+
+# --- Epsilon-Greedy Schedule ---
+EPSILON_START = 1.0          
+EPSILON_END = 0.1            
+EPSILON_DECAY_STEPS = 5000000 
+
+# --- Hardware Configuration ---
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print(f"Using device: {DEVICE}")
