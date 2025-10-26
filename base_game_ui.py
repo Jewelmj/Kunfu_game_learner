@@ -1,7 +1,6 @@
-import gymnasium as gym
-import ale_py
 import msvcrt
 import time
+from utils.wrapper import make_env_human
 
 # --- Configuration ---
 env_id = 'ALE/KungFuMaster-v5'
@@ -18,21 +17,21 @@ key_to_action = {
     b' ': 0,    # NOOP (Spacebar)
 }
 
-gym.register_envs(ale_py)
-
 try:
-    # 1. Create the environment
-    env = gym.make(env_id, render_mode=RENDER_MODE)
+    env = make_env_human(env_id)
     observation, info = env.reset(seed=42)
-    print(f"Environment '{env_id}' ready. Press keys (W, A, S, D, E, Q) and hit Enter/Space to act, or press 'R' to reset, 'X' to quit.")
+    
+    print(f"Environment '{env_id}' ready.")
+    print(f"Observation Space (DQN Ready): {env.observation_space.shape}")
+    print(f"Action Space: {env.action_space.n}")
+    print("\nPress keys (W, A, S, D, E, Q) to act, 'R' to reset, 'X' to quit.")
 
     terminated = False
     truncated = False
 
-    action = 0  # start with NOOP (Action 0)
+    action = 3  # start with left
     
     while not (terminated or truncated):
-        # 2. Check for keyboard input non-blockingly
         if msvcrt.kbhit():
             key = msvcrt.getch()
             if key == b'x':
@@ -43,27 +42,24 @@ try:
                 observation, info = env.reset()
                 continue
 
-            # Check for a recognized action key
             if key in key_to_action:
                 action = key_to_action[key]
                 print(f"-> Manual Action: Key '{key.decode()}' mapped to Action {action}")
             else:
-                # If an unmapped key is pressed, do nothing (NOOP = 0)
                 pass
         
-        # 3. Take the step using the determined action (keyboard input or default 0)
+        env.render() 
         observation, reward, terminated, truncated, info = env.step(action)
-        print(info)
         
         if action != 0 or msvcrt.kbhit():
-             print(f"Step {info.get('lives', 'N/A')}: Reward={reward:.1f}, Action taken: {action}")
-
+             step_info = info.get('episode', {})
+             print(f"Step | Reward={reward:.1f}, Action taken: {action} | Episode Reward: {step_info.get('r', 'N/A')}")
+             
         if terminated or truncated:
             print("Episode ended naturally. Resetting...")
             observation, info = env.reset()
 
-        # Essential: Slow down the loop slightly for playability and rendering updates
-        time.sleep(0.1) 
+        time.sleep(0.05) 
 
 finally:
     if 'env' in locals() and env:
