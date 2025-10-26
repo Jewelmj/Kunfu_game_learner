@@ -1,10 +1,11 @@
 import msvcrt
 import time
 from utils.wrapper import make_env_human
+from config import ENV_ID, RENDER_MODE_HUMAN, STEP_DELAY, DEFAULT_ACTION
 
 # --- Configuration ---
-env_id = 'ALE/KungFuMaster-v5'
-RENDER_MODE = "human"
+env_id = ENV_ID
+RENDER_MODE = RENDER_MODE_HUMAN
 
 # --- Action Mapping ---
 key_to_action = {
@@ -29,7 +30,7 @@ try:
     terminated = False
     truncated = False
 
-    action = 3  # start with left
+    action = DEFAULT_ACTION  # start with left
     
     while not (terminated or truncated):
         if msvcrt.kbhit():
@@ -59,7 +60,7 @@ try:
             print("Episode ended naturally. Resetting...")
             observation, info = env.reset()
 
-        time.sleep(0.05) 
+        time.sleep(STEP_DELAY) 
 
 finally:
     if 'env' in locals() and env:
