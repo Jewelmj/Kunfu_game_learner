@@ -27,18 +27,36 @@ class DQNAgent:
         """
         Performs an epsilon-greedy action selection.
         """
-        if random.random() < epsilon:
-            return random.randrange(self.action_size)
+        is_single_state = (state.ndim == 3)
+        
+        # If it's a single state, add a batch dimension for the network
+        if is_single_state:
+            state_batch = state[np.newaxis, ...]
         else:
-            state = torch.from_numpy(state).float().to(DEVICE)
-            state = state.unsqueeze(0) 
+            state_batch = state
+            
+        # 1. Epsilon-greedy exploration
+        if random.random() < epsilon:
+            num_actions = state_batch.shape[0]
+            # Return a batch of random actions if running in parallel
+            random_actions = np.random.randint(self.action_size, size=num_actions)
+            return random_actions[0] if is_single_state else random_actions
+        
+        # 2. Exploitation (Network prediction)
+        else:
+            state_tensor = torch.from_numpy(state_batch).float().to(DEVICE)
             
             self.q_network.eval()
             with torch.no_grad():
-                action_values = self.q_network(state)
+                # Get Q-values for the entire batch
+                q_values = self.q_network(state_tensor).cpu().data.numpy()
             self.q_network.train()
             
-            return action_values.argmax().item()
+            # Select the action with the maximum Q-value for each environment
+            best_actions = np.argmax(q_values, axis=1)
+            
+            # Return a single action if input was a single state
+            return best_actions[0].item() if is_single_state else best_actions
 
     def save_step(self, state, action, reward, next_state, done):
         self.memory.add(state, action, reward, next_state, done)

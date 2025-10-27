@@ -2,10 +2,12 @@ import torch
 import numpy as np
 import random
 import time
+import tqdm
+import csv
 from collections import deque
 
 from config import *
-from utils.wrapper import make_env_agent
+from utils.wrapper import make_parallel_env 
 from agents.dqn_agent import DQNAgent
 
 
@@ -19,76 +21,108 @@ def linear_schedule(start_e, end_e, decay_steps, current_step):
         return end_e
 
 def train_agent():
-    env = make_env_agent(ENV_ID, frame_stack_k=NUM_FRAMES)
-    
-    action_size = env.action_space.n
+    envs = make_parallel_env(N_ENVS)
+
+    action_size = envs.single_action_space.n 
     agent = DQNAgent(action_size, BUFFER_SIZE, LEARNING_RATE)
     
     print(f"Agent initialized. Total Actions: {action_size}")
+    print(f"Using {N_ENVS} parallel environments for faster data collection.")
     
-    current_step = 0
     episodes = 0
-    
-    # Keep track of the last 100 episode rewards for monitoring
+    loss = 0.0 
+
     scores_window = deque(maxlen=100)
     best_avg_score = -np.inf
-    
-    state, info = env.reset(seed=42)
+    state, info = envs.reset(seed=42)
+    episode_rewards = np.zeros(N_ENVS, dtype=np.float32)
+
+    with open(LOG_FILE, mode="w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["step", "episode", "epsilon", "avg_reward", "max_reward", "loss"])
+
+    last_avg_score, last_max_score, last_episodes = 0.0, 0.0, 0
+    last_epsilon, last_loss = 0.0, 0.0
 
     try:
-        start_time = time.time()
-        
-        while current_step < TOTAL_TIMESTEPS:
-            epsilon = linear_schedule(EPSILON_START, EPSILON_END, EPSILON_DECAY_STEPS, current_step)
-            action = agent.act(state, epsilon)
-            
-            next_state, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
+        with tqdm.tqdm(total=TOTAL_TIMESTEPS, desc="Training Progress", unit="step") as pbar:
+            current_step = 0
+            while current_step < TOTAL_TIMESTEPS:
+                epsilon = linear_schedule(EPSILON_START, EPSILON_END, EPSILON_DECAY_STEPS, current_step)
 
-            agent.save_step(state, action, reward, next_state, done)
-            
-            state = next_state
-            current_step += 1
-            
-            if current_step > TRAINING_STARTS:
-                loss = agent.learn()
+                actions = agent.act(state, epsilon)
+                next_state, reward, terminated, truncated, info = envs.step(actions)
+
+                dones = terminated | truncated
+                episode_rewards += reward
+
+                for i in range(N_ENVS):
+                    agent.save_step(state[i], actions[i], reward[i], next_state[i], dones[i])
                 
-                if current_step % 10000 == 0:
-                    elapsed_time = time.time() - start_time
-                    steps_per_sec = current_step / elapsed_time
-                    print(f"Step: {current_step}/{TOTAL_TIMESTEPS} | Epsilon: {epsilon:.3f} | Loss: {loss:.4f} | Speed: {steps_per_sec:.2f} steps/s")
-
-            if done:
-                episodes += 1
-
-                episode_reward = info.get('episode_reward', 0) 
-                scores_window.append(episode_reward)
+                state = next_state
+                current_step += N_ENVS
+                pbar.update(N_ENVS)
                 
-                # Reset environment for the next episode
-                state, info = env.reset()
+                if current_step >= TRAINING_STARTS:
+                    loss = agent.learn()
+                    
+                pbar.set_postfix(eps=f"{epsilon:.3f}", loss=f"{loss:.4f}", refresh=False)
 
-                # --- Evaluation and Checkpoint Saving ---
-                if episodes % 10 == 0:
-                    avg_score = np.mean(scores_window)
-                    max_score = np.max(scores_window) 
-                    
-                    print(f"EP {episodes:<5} | Avg Score (100): {avg_score:.2f} | Max Score (100): {max_score:.1f} | Current Score: {episode_reward:.1f}")
-                    
-                    if avg_score > best_avg_score:
-                        best_avg_score = avg_score
-                        save_path = f'saved_models/best_kungfu_dqn_{int(avg_score)}.pth'
+                
+                # 7. --- Handle Episode Termination and Logging ---
+                finished_rewards = []
+
+                for i, done in enumerate(terminated | truncated):
+                    if done:
+                        episodes += 1
+                        finished_rewards.append(episode_rewards[i])
+                        episode_rewards[i] = 0  # reset for next episode
+
+                if finished_rewards:
+                    scores_window.extend(finished_rewards)
+                    last_avg_score = np.mean(scores_window)
+                    last_max_score = np.max(scores_window)
+                    last_episodes = episodes
+                    last_epsilon = epsilon
+                    last_loss = loss
+
+                    if last_avg_score > best_avg_score:
+                        best_avg_score = last_avg_score
+                        save_path = f"{LOG_FOLDER}/{LOG_CURRENT_BEST_MODEL_AS}{int(last_avg_score)}.pth"
                         agent.q_network.save_checkpoint(save_path)
-                        print(f"*** NEW BEST MODEL SAVED *** (Avg Score: {best_avg_score:.2f})")
+
+                # --- Update progress bar every loop but with cached values ---
+                pbar.set_postfix(
+                    eps=f"{last_epsilon:.3f}",
+                    loss=f"{last_loss:.4f}",
+                    avgR=f"{last_avg_score:.1f}",
+                    maxR=f"{last_max_score:.0f}",
+                    ep=f"{last_episodes}"
+                )
+
+                if current_step % LOG_EVERY_N_STEPS == 0:
+                    with open(LOG_FILE, mode="a", newline="") as f:
+                        writer = csv.writer(f)
+                        writer.writerow([
+                            current_step,
+                            last_episodes,
+                            round(last_epsilon, 5),
+                            round(last_avg_score, 5),
+                            round(last_max_score, 5),
+                            round(last_loss, 5)
+                        ])
+
+                pbar.update(N_ENVS)
 
         
     except KeyboardInterrupt:
-        print("\nTraining interrupted by user. Saving final model...")
+        tqdm.tqdm.write("\nTraining interrupted by user. Saving final model...")
         
     finally:
-        final_save_path = './saved_models/kungfu_dqn_final.pth'
+        final_save_path = f'./{LOG_FOLDER}/{LOG_FINAL_BEST_MODEL_AS}.pth'
         agent.q_network.save_checkpoint(final_save_path)
-        print(f"\nFinal model saved to: {final_save_path}")
-        env.close()
+        tqdm.tqdm.write(f"\nFinal model saved to: {final_save_path}")
+        envs.close() 
 
 if __name__ == "__main__":
     seed = 42

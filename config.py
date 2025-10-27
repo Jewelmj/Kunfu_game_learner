@@ -5,11 +5,12 @@ import torch
 ENV_ID = "ALE/KungFuMaster-v5"
 FRAME_WIDTH = 84           # Resized image width
 FRAME_HEIGHT = 84         # Resized image height
+N_ENVS = 11                # number of parelel enviorments
 RENDER_MODE_AGENT = "rgb_array"
 
 # --- Frame stack and skip ---
-FRAME_STACK_K = 4    # Number of frames to stack for RL agent
-FRAME_SKIP = 4       # Number of frames to skip per action
+FRAME_STACK_K = 2    # Number of frames to stack for RL agent
+FRAME_SKIP = 2       # Number of frames to skip per action
 
 # --- base game ui | for human ---
 RENDER_MODE_HUMAN = "human"
@@ -39,6 +40,13 @@ TOTAL_TIMESTEPS = 10000000
 EPSILON_START = 1.0          
 EPSILON_END = 0.1            
 EPSILON_DECAY_STEPS = 5000000 
+
+# --- LOG ---
+LOG_FOLDER = "results"
+LOG_FILE = f"{LOG_FOLDER}/training_log.csv"
+LOG_EVERY_N_STEPS = 1000
+LOG_CURRENT_BEST_MODEL_AS = "best_kungfu_dqn_"
+LOG_FINAL_BEST_MODEL_AS = "kungfu_dqn_final"
 
 # --- Hardware Configuration ---
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
