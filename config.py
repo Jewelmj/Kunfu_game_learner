@@ -1,74 +1,75 @@
 import torch
 
-# --- Environment Settings ---
+# Base Enviorment
 ENV_ID = "ALE/KungFuMaster-v5"
-N_ENVS = 1                # number of parelel enviorments
 RENDER_MODE_AGENT = "rgb_array"
+FRAME_WIDTH = 84
+FRAME_HEIGHT = 84
+FRAME_STACK_K = 2
+FRAME_SKIP = 2
 
-# --- image preprocess in utils/wrapper ---
-FRAME_WIDTH = 84   
-FRAME_HEIGHT = 84  
-FRAME_STACK_K = 2  
-FRAME_SKIP = 2       
-
-# --- base game ui | for human ---
+# base game ui | for human 
 RENDER_MODE_HUMAN = "human"
 STEP_DELAY = 0.05
 DEFAULT_ACTION = 3
 
-# --- Agent select ---
-AGENT_TYPE = 'PPO' # Options: 'DQN', 'PPO', 'LINEAR'
+# Agent selection
+AGENT_TYPE = 'DQN'    # Options: 'DQN', 'PPO', 'LINEAR'
+N_ENVS = 1            # Number of parallel environments
 
-# --- CNN Hyperparameters ---
-NUM_FRAMES = 4          # for motion detection.
+# --- Epsilon-Greedy ---
+EPSILON_START = 1.0
+EPSILON_END = 0.1
+EPSILON_DECAY_STEPS = 1_000_000
+
+# Off policy learning hyper parameters
+BUFFER_SIZE = 50000
+BATCH_SIZE = 100
+GAMMA = 0.99
+LEARNING_RATE = 0.0000625
+TARGET_UPDATE_FREQ = 10000
+TRAINING_STARTS = 1000
+TOTAL_TIMESTEPS = 1_000_000
+
+NUM_FRAMES = 4  # Stacked frames for temporal context
 CONV_OUT_CHANNELS = [32, 64, 64]
 CONV_KERNELS = [8, 4, 3]
 CONV_STRIDEs = [4, 2, 1]
-FC_UNITS1 = 512   # common for DQN, linier, and PPO model.
-FC_UNITS2 = 512   # common for DQN, linier, and PPO model.
-CONV_OUT_SIZE = CONV_OUT_CHANNELS[2] * \
-                (((((FRAME_HEIGHT - CONV_KERNELS[0]) // CONV_STRIDEs[0] + 1) - CONV_KERNELS[1]) // CONV_STRIDEs[1] + 1
-                  - CONV_KERNELS[2]) // CONV_STRIDEs[2] + 1) ** 2
+FC_UNITS1 = 512
+FC_UNITS2 = 512
+CONV_OUT_SIZE = CONV_OUT_CHANNELS[2] * (
+    (((((FRAME_HEIGHT - CONV_KERNELS[0]) // CONV_STRIDEs[0] + 1)
+       - CONV_KERNELS[1]) // CONV_STRIDEs[1] + 1
+       - CONV_KERNELS[2]) // CONV_STRIDEs[2] + 1) ** 2
+)
 
-# --- DQN Hyperparameters ---
-BUFFER_SIZE = 50000
-BATCH_SIZE = 100               # Replay buffer sampling
-GAMMA = 0.99                  # Discount factor
-LEARNING_RATE = 0.0000625
-TARGET_UPDATE_FREQ = 10000    # Frequency (in steps) of updating the target network
-TRAINING_STARTS = 1000        # training begins at
-TOTAL_TIMESTEPS = 1000000 
+# Onpolicy hyper parameters
+PPO_ROLLOUT_STEPS = 2048       # Number of steps before each PPO update
+PPO_EPOCHS = 4
+PPO_CLIP_EPSILON = 0.1
+PPO_VF_COEF = 0.5
+PPO_ENT_COEF = 0.01
+PPO_LR = 0.00025
+PPO_BATCH_SIZE = 64
+PPO_GAMMA = 0.99
+PPO_GAE_LAMBDA = 0.95
 
-# --- Epsilon-Greedy Schedule ---
-EPSILON_START = 1.0          
-EPSILON_END = 0.1            
-EPSILON_DECAY_STEPS = 1000000 
-
-# --- On policy trainig hyper parameters ---
-PPO_ROLLOUT_STEPS = 1
-PPO_EPOCHS = 4              # How many times to loop over the collected data
-PPO_CLIP_EPSILON = 0.1      # Clipping parameter (e.g., 0.1 or 0.2)
-PPO_VF_COEF = 0.5           # Value function loss coefficient
-PPO_ENT_COEF = 0.01         # Entropy bonus coefficient
-PPO_LR = 0.00025            # Learning rate
-
-# --- Rollout buffer hyper parameters ---
-PPO_BATCH_SIZE = 64         # Mini-batch size for optimization
-PPO_GAMMA = 0.99            # Discount factor
-PPO_GAE_LAMBDA = 0.95       # Generalized Advantage Estimation parameter
-
-# --- LOG ---
+# Log file
 LOG_FOLDER = "results"
 LOG_FILE = f"{LOG_FOLDER}/log/training_log.csv"
 LOG_EVERY_N_STEPS = 1000
 LOG_CURRENT_BEST_MODEL_AS = f"{LOG_FOLDER}/saved_models/best_kungfu_{AGENT_TYPE}_"
 LOG_FINAL_BEST_MODEL_AS = f"{LOG_FOLDER}/saved_models/kungfu_{AGENT_TYPE}_final"
 
-# --- Video ---
+# video file location
 MODEL_NAME_FOR_VIDEO = f"saved_models/kungfu_{AGENT_TYPE}_final"
 OUTPUT_VIDEO_FILE_NAME = "video/evaluation_video"
 
-# --- Hardware Configuration ---
+# plot log files
+LOG_FILES_TO_PLOT = ["results/log/training_log.csv",
+                    "results/log/training_log2.csv"]
+
+# initialise device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(f"Using device: {DEVICE}")

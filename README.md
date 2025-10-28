@@ -40,6 +40,12 @@ python train_onpolicy.py
 python create_video.py
 ```
 > note: change the config file with rigth agent name and file paths.
+3. Create training plots:
+> For visualising the training process and performance.
+```bash
+python plot_log.py
+```
+> note: change the config file with rigth log file path.
 ## Project Structure:
 Here’s the full folder and file layout:
 ```bash
@@ -48,6 +54,7 @@ Kunfu_game_learner/
 ├── train_offpolicy.py
 ├── train_onpolicy.py
 ├── create_video.py
+├── plot_log.py
 ├── models/ (Q-networks)
 ├── agents/ (DQN, Linear and PPo agents)
 ├── memory/ (Replay buffer, Rollout buffer)
@@ -60,18 +67,19 @@ Here's the porpouse of each file:
 2. train_offpolicy.py: Main Training Loop for DQN and Linier-Qnet agents.
 3. train_onpolicy.py: Main training loop for PPO agent.
 4. create_video.py: Loads a trained model and generates a high-resolution gameplay video.
-5. config.py: Stores all key parameters for the project.
-6. agents/: Implements different agent classes such as DQNAgent, LinearAgent, etc.
-7. models/: Contains different neural network architectures. (CNN for DQN)
-8. results/: Stores logs, saved models, and recorded videos.
-9. agents/dqn_agent.py: Implements the core DQN functions, act (epsilon-greedy action selection), step (storing experience in the buffer), and learn (calculating TD-target and performing optimization).
-10. agents/linear_agent.py: similar to DQN without CNN layers.
-11. models/cnn_q_network.py: Defines the Q_netwrok model with CNN and FC layers.
-12. models/linear_q_network.py: the newral network for agents/linear_agent.py.
-13. memory/replay_buffer.py: Implements the memory structure.
-14. utils/wrapper.py: Define the gymnasium eviorment and do preprosing for the agent.
-15. utils/vedio_utils: Contains functions for video recording, saving, and rendering.
-16. utils/agent_selection: Central module to choose and initialize agents dynamically during training or evaluation.
+5. plot_log.py: plots the log files after training.
+6. config.py: Stores all key parameters for the project.
+7. agents/: Implements different agent classes such as DQNAgent, LinearAgent, etc.
+8. models/: Contains different neural network architectures. (CNN for DQN)
+9. results/: Stores logs, saved models, and recorded videos.
+10. agents/dqn_agent.py: Implements the core DQN functions, act (epsilon-greedy action selection), step (storing experience in the buffer), and learn (calculating TD-target and performing optimization).
+11. agents/linear_agent.py: similar to DQN without CNN layers.
+12. models/cnn_q_network.py: Defines the Q_netwrok model with CNN and FC layers.
+13. models/linear_q_network.py: the newral network for agents/linear_agent.py.
+14. memory/replay_buffer.py: Implements the memory structure.
+15. utils/wrapper.py: Define the gymnasium eviorment and do preprosing for the agent.
+16. utils/vedio_utils: Contains functions for video recording, saving, and rendering.
+17. utils/agent_selection: Central module to choose and initialize agents dynamically during training or evaluation.
 
 ## Environment and Methods:
 1. Environment id: ALE/KungFuMaster-v5 
