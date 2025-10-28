@@ -1,4 +1,4 @@
-# Kunfu Game Learner
+# Kungfu Game Learner
 This repository contains custom Pytorch implimentation of RL algorythms(DQN, Lenier-QNet) to train an agent to play the Atari game Kung Fu Master.
 
 ## Installation and Setup:
@@ -20,14 +20,18 @@ pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https
 ```
 ## Usage:
 1. running the base game use this command(Manual Play):
-> For getting a feel for the game by playing manualy.
+> Play the Atari game manually to understand controls and environment dynamics.
 ```bash
 python base_game_ui.py
 ```
 2. Training Process:
-> For training these diffrent agents and save in saved_models folder. 
+> For training offpolicy agents like DQN and Lenier these diffrent agents. 
 ```bash
-python train.py
+python train_offpolicy.py
+```
+> For training onpolicy agents like PPO these diffrent agents. 
+```bash
+python train_onpolicy.py
 ```
 > note: change the config file with rigth agent name and hyper paremeters for training.
 3. Generate a Video of a Trained Agent:
@@ -35,37 +39,39 @@ python train.py
 ```bash
 python create_video.py
 ```
-> note: change the config file with rigth agent name and hyper paremeters for training.
+> note: change the config file with rigth agent name and file paths.
 ## Project Structure:
 Here’s the full folder and file layout:
 ```bash
 Kunfu_game_learner/
 ├── base_game_ui.py
-├── train.py
+├── train_offpolicy.py
+├── train_onpolicy.py
 ├── create_video.py
 ├── models/ (Q-networks)
-├── agents/ (DQN & Linear agents)
-├── memory/ (Replay buffer)
+├── agents/ (DQN, Linear and PPo agents)
+├── memory/ (Replay buffer, Rollout buffer)
 ├── utils/ (Wrappers, video, agent loader)
 ├── results/ (Saved models, videos, logs)
 └── config.py
 ```
 Here's the porpouse of each file:
 1. base_game_ui.py: Manual Play Interface.
-2. train.py: Main Training Loop.
-3. create_video.py: Loads a trained model and generates a high-resolution gameplay video.
-4. config.py: Stores all key parameters for the project.
-5. agents/: Implements different agent classes such as DQNAgent, LinearAgent, etc.
-6. models/: Contains different neural network architectures. (CNN for DQN)
-7. results/: Stores logs, saved models, and recorded videos.
-8. agents/dqn_agent.py: Implements the core DQN functions, act (epsilon-greedy action selection), step (storing experience in the buffer), and learn (calculating TD-target and performing optimization).
-9. agents/linear_agent.py: similar to DQN without CNN layers.
-10. models/cnn_q_network.py: Defines the Q_netwrok model with CNN and FC layers.
-11. models/linear_q_network.py: the newral network for agents/linear_agent.py.
-12. memory/replay_buffer.py: Implements the memory structure.
-13. utils/wrapper.py: Define the gymnasium eviorment and do preprosing for the agent.
-14. utils/vedio_utils: Contains functions for video recording, saving, and rendering.
-15. utils/agent_selection: Central module to choose and initialize agents dynamically during training or evaluation.
+2. train_offpolicy.py: Main Training Loop for DQN and Linier-Qnet agents.
+3. train_onpolicy.py: Main training loop for PPO agent.
+4. create_video.py: Loads a trained model and generates a high-resolution gameplay video.
+5. config.py: Stores all key parameters for the project.
+6. agents/: Implements different agent classes such as DQNAgent, LinearAgent, etc.
+7. models/: Contains different neural network architectures. (CNN for DQN)
+8. results/: Stores logs, saved models, and recorded videos.
+9. agents/dqn_agent.py: Implements the core DQN functions, act (epsilon-greedy action selection), step (storing experience in the buffer), and learn (calculating TD-target and performing optimization).
+10. agents/linear_agent.py: similar to DQN without CNN layers.
+11. models/cnn_q_network.py: Defines the Q_netwrok model with CNN and FC layers.
+12. models/linear_q_network.py: the newral network for agents/linear_agent.py.
+13. memory/replay_buffer.py: Implements the memory structure.
+14. utils/wrapper.py: Define the gymnasium eviorment and do preprosing for the agent.
+15. utils/vedio_utils: Contains functions for video recording, saving, and rendering.
+16. utils/agent_selection: Central module to choose and initialize agents dynamically during training or evaluation.
 
 ## Environment and Methods:
 1. Environment id: ALE/KungFuMaster-v5 
@@ -83,3 +89,6 @@ results/
 └── video/
     └── evaluation_video.mp4
 ```
+## 🎮 Demo Video
+Watch the trained agent play Kung Fu Master
+[![Watch the video]](https://youtube.com/shorts/GNXz_VnIido?feature=share>)

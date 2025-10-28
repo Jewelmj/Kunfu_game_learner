@@ -23,7 +23,7 @@ def train_agent():
 
     action_size = envs.single_action_space.n
     
-    AgentClass = get_agent_class(AGENT_TYPE)
+    AgentClass = get_agent_class(AGENT_TYPE, False)
     agent = AgentClass(action_size, BUFFER_SIZE, LEARNING_RATE)
     
     print(f"Agent initialized: {AGENT_TYPE}. Total Actions: {action_size}")

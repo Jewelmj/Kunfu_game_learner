@@ -2,7 +2,7 @@ import torch
 
 # --- Environment Settings ---
 ENV_ID = "ALE/KungFuMaster-v5"
-N_ENVS = 12                # number of parelel enviorments
+N_ENVS = 1                # number of parelel enviorments
 RENDER_MODE_AGENT = "rgb_array"
 
 # --- image preprocess in utils/wrapper ---
@@ -17,7 +17,7 @@ STEP_DELAY = 0.05
 DEFAULT_ACTION = 3
 
 # --- Agent select ---
-AGENT_TYPE = 'DQN' # Options: 'DQN', 'PPO', 'LINEAR'
+AGENT_TYPE = 'PPO' # Options: 'DQN', 'PPO', 'LINEAR'
 
 # --- CNN Hyperparameters ---
 NUM_FRAMES = 4          # for motion detection.
@@ -43,6 +43,19 @@ TOTAL_TIMESTEPS = 1000000
 EPSILON_START = 1.0          
 EPSILON_END = 0.1            
 EPSILON_DECAY_STEPS = 1000000 
+
+# --- On policy trainig hyper parameters ---
+PPO_ROLLOUT_STEPS = 1
+PPO_EPOCHS = 4              # How many times to loop over the collected data
+PPO_CLIP_EPSILON = 0.1      # Clipping parameter (e.g., 0.1 or 0.2)
+PPO_VF_COEF = 0.5           # Value function loss coefficient
+PPO_ENT_COEF = 0.01         # Entropy bonus coefficient
+PPO_LR = 0.00025            # Learning rate
+
+# --- Rollout buffer hyper parameters ---
+PPO_BATCH_SIZE = 64         # Mini-batch size for optimization
+PPO_GAMMA = 0.99            # Discount factor
+PPO_GAE_LAMBDA = 0.95       # Generalized Advantage Estimation parameter
 
 # --- LOG ---
 LOG_FOLDER = "results"
