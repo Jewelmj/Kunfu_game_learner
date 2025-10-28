@@ -4,3 +4,4 @@ torch
 tqdm
 gymnasium[atari]
 ale-py
+imageio[ffmpeg]

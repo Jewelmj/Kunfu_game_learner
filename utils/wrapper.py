@@ -26,3 +26,31 @@ def _make_single_env():
 
 def make_parallel_env(n_envs=N_ENVS):
     return gym.vector.AsyncVectorEnv([lambda: _make_single_env() for _ in range(n_envs)])
+
+class HighResRenderWrapper(gym.Wrapper):
+    """
+    Wraps the fully preprocessed (stacked, grayscale, 84x84) environment.
+    
+    It keeps the reset/step methods intact (returning the low-res, stacked observation 
+    the agent expects), but overrides render() to return the raw, high-resolution, 
+    color RGB frame from the base Atari environment for video recording purposes.
+    """
+    def __init__(self, env):
+        super().__init__(env)
+        self.base_env = self.env.unwrapped
+
+        if self.base_env.render_mode != 'rgb_array':
+            print(f"Warning: Base environment render_mode is '{self.base_env.render_mode}'. Must be 'rgb_array' for high-res output.")  
+        print(f"Video Wrapper initialized. Base environment type: {type(self.base_env).__name__}")
+        
+    def render(self):
+        """
+        Forces the underlying base environment to render the full-resolution RGB array.
+        """
+        raw_frame = self.base_env.render()
+        
+        if raw_frame is not None and len(raw_frame.shape) == 3 and raw_frame.shape[2] == 3:
+            return raw_frame
+        else:
+            print("Error: Could not retrieve a valid high-resolution RGB frame. Returning the default frame.")
+            return self.env.render()

@@ -1,15 +1,13 @@
 import torch
 import numpy as np
 import random
-import time
 import tqdm
 import csv
 from collections import deque
 
 from config import *
 from utils.wrapper import make_parallel_env 
-from agents.dqn_agent import DQNAgent
-from agents.linear_q_agent import LinearAgent as LINEAR
+from utils.agent_loader import get_agent_class
 
 def linear_schedule(start_e, end_e, decay_steps, current_step):
     """
@@ -19,18 +17,6 @@ def linear_schedule(start_e, end_e, decay_steps, current_step):
         return start_e - (start_e - end_e) * (current_step / decay_steps)
     else:
         return end_e
-
-def get_agent_class(agent_type):
-    """
-    Selects the agent class based on the configuration setting AGENT_TYPE.
-    """
-    if agent_type == 'DQN':
-        return DQNAgent
-    elif agent_type == 'LINEAR':
-        return LINEAR 
-    else:
-        raise ValueError(f"Unknown AGENT_TYPE specified in config: {agent_type}. Must be 'DQN', 'PPO', or 'LINEAR'.")
-
 
 def train_agent():
     envs = make_parallel_env(N_ENVS)
@@ -101,7 +87,7 @@ def train_agent():
 
                     if last_avg_score > best_avg_score:
                         best_avg_score = last_avg_score
-                        save_path = f"{LOG_FOLDER}/{LOG_CURRENT_BEST_MODEL_AS}{int(last_avg_score)}.pth"
+                        save_path = f"{LOG_CURRENT_BEST_MODEL_AS}{int(last_avg_score)}.pth"
                         agent.q_network.save_checkpoint(save_path)
 
                 pbar.set_postfix(
@@ -130,7 +116,7 @@ def train_agent():
         tqdm.tqdm.write("\nTraining interrupted by user. Saving final model...")
         
     finally:
-        final_save_path = f'./{LOG_FOLDER}/{LOG_FINAL_BEST_MODEL_AS}.pth'
+        final_save_path = f'./{LOG_FINAL_BEST_MODEL_AS}.pth'
         agent.q_network.save_checkpoint(final_save_path)
         tqdm.tqdm.write(f"\nFinal model saved to: {final_save_path}")
         envs.close() 
