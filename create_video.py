@@ -22,7 +22,10 @@ def evaluate_agent(model_path):
     action_size = temp_env.action_space.n 
     temp_env.close()
 
-    AgentClass = get_agent_class(AGENT_TYPE)
+    if AGENT_TYPE=="PPO":
+        AgentClass = get_agent_class(AGENT_TYPE, True)
+    else:
+        AgentClass = get_agent_class(AGENT_TYPE, False)
     agent = AgentClass(action_size, buffer_size=1000, lr=0.0)  # irrelevent 2 number.
     
     if not hasattr(agent, 'q_network'):
