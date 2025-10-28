@@ -9,14 +9,14 @@ class RolloutBuffer:
     It clears after every major learning step.
     """
     def __init__(self, buffer_size, state_shape):
-        self.states = np.empty((buffer_size, *state_shape), dtype=np.float32)
-        self.actions = np.empty(buffer_size, dtype=np.int64)
-        self.rewards = np.empty(buffer_size, dtype=np.float32)
+        self.states = np.empty((buffer_size, *state_shape), dtype=np.uint8)
+        self.actions = np.empty(buffer_size, dtype=np.int16)
+        self.rewards = np.empty(buffer_size, dtype=np.float16)
         self.dones = np.empty(buffer_size, dtype=np.bool_)
-        self.log_probs = np.empty(buffer_size, dtype=np.float32)
-        self.values = np.empty(buffer_size, dtype=np.float32)
-        self.returns = np.empty(buffer_size, dtype=np.float32)
-        self.advantages = np.empty(buffer_size, dtype=np.float32)
+        self.log_probs = np.empty(buffer_size, dtype=np.float16)
+        self.values = np.empty(buffer_size, dtype=np.float16)
+        self.returns = np.empty(buffer_size, dtype=np.float16)
+        self.advantages = np.empty(buffer_size, dtype=np.float16)
         self.ptr = 0
         self.max_size = buffer_size
 
@@ -24,13 +24,14 @@ class RolloutBuffer:
         if self.ptr >= self.max_size:
             raise IndexError("Rollout buffer exceeded max capacity.")
             
-        self.states[self.ptr] = state
-        self.actions[self.ptr] = action
-        self.rewards[self.ptr] = reward
-        self.dones[self.ptr] = done
-        self.log_probs[self.ptr] = log_prob
-        self.values[self.ptr] = value
-        self.ptr += 1
+        idx = self.ptr % self.max_size  # circular indexing
+        self.states[idx] = state
+        self.actions[idx] = action
+        self.rewards[idx] = reward
+        self.dones[idx] = done
+        self.log_probs[idx] = log_prob
+        self.values[idx] = value
+        self.ptr = (self.ptr + 1) % self.max_size
 
     def clear(self):
         self.ptr = 0

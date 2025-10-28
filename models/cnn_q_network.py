@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from config import NUM_FRAMES, CONV_OUT_CHANNELS, CONV_KERNELS, CONV_STRIDEs, FC_UNITS1, FC_UNITS2, CONV_OUT_SIZE
+from config import NUM_FRAMES, CONV_OUT_CHANNELS, CONV_KERNELS, CONV_STRIDES, FC_UNITS1, FC_UNITS2, CONV_OUT_SIZE
 
 class QNetwork(nn.Module):
     def __init__(self, action_size):
@@ -13,9 +13,9 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
 
         # 1. Input: (NUM_FRAMES, 84, 84) -> Output: (32, 20, 20)
-        self.conv1 = nn.Conv2d(in_channels=NUM_FRAMES, out_channels=CONV_OUT_CHANNELS[0], kernel_size=CONV_KERNELS[0], stride=CONV_STRIDEs[0])
-        self.conv2 = nn.Conv2d(in_channels=CONV_OUT_CHANNELS[0], out_channels=CONV_OUT_CHANNELS[1], kernel_size=CONV_KERNELS[1], stride=CONV_STRIDEs[1])
-        self.conv3 = nn.Conv2d(in_channels=CONV_OUT_CHANNELS[1], out_channels=CONV_OUT_CHANNELS[2], kernel_size=CONV_KERNELS[2], stride=CONV_STRIDEs[2]) # 64, 9, 9) -> (64, 7, 7)
+        self.conv1 = nn.Conv2d(in_channels=NUM_FRAMES, out_channels=CONV_OUT_CHANNELS[0], kernel_size=CONV_KERNELS[0], stride=CONV_STRIDES[0])
+        self.conv2 = nn.Conv2d(in_channels=CONV_OUT_CHANNELS[0], out_channels=CONV_OUT_CHANNELS[1], kernel_size=CONV_KERNELS[1], stride=CONV_STRIDES[1])
+        self.conv3 = nn.Conv2d(in_channels=CONV_OUT_CHANNELS[1], out_channels=CONV_OUT_CHANNELS[2], kernel_size=CONV_KERNELS[2], stride=CONV_STRIDES[2]) # 64, 9, 9) -> (64, 7, 7)
         
         # 4. Input: 3136 -> Output: 512
         self.fc4 = nn.Linear(CONV_OUT_SIZE, FC_UNITS1)
