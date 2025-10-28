@@ -9,7 +9,7 @@ from collections import deque
 from config import *
 from utils.wrapper import make_parallel_env 
 from agents.dqn_agent import DQNAgent
-
+from agents.linear_q_agent import LinearAgent as LINEAR
 
 def linear_schedule(start_e, end_e, decay_steps, current_step):
     """
@@ -20,13 +20,27 @@ def linear_schedule(start_e, end_e, decay_steps, current_step):
     else:
         return end_e
 
+def get_agent_class(agent_type):
+    """
+    Selects the agent class based on the configuration setting AGENT_TYPE.
+    """
+    if agent_type == 'DQN':
+        return DQNAgent
+    elif agent_type == 'LINEAR':
+        return LINEAR 
+    else:
+        raise ValueError(f"Unknown AGENT_TYPE specified in config: {agent_type}. Must be 'DQN', 'PPO', or 'LINEAR'.")
+
+
 def train_agent():
     envs = make_parallel_env(N_ENVS)
 
-    action_size = envs.single_action_space.n 
-    agent = DQNAgent(action_size, BUFFER_SIZE, LEARNING_RATE)
+    action_size = envs.single_action_space.n
     
-    print(f"Agent initialized. Total Actions: {action_size}")
+    AgentClass = get_agent_class(AGENT_TYPE)
+    agent = AgentClass(action_size, BUFFER_SIZE, LEARNING_RATE)
+    
+    print(f"Agent initialized: {AGENT_TYPE}. Total Actions: {action_size}")
     print(f"Using {N_ENVS} parallel environments for faster data collection.")
     
     episodes = 0
@@ -34,6 +48,7 @@ def train_agent():
 
     scores_window = deque(maxlen=100)
     best_avg_score = -np.inf
+    
     state, info = envs.reset(seed=42)
     episode_rewards = np.zeros(N_ENVS, dtype=np.float32)
 
@@ -49,10 +64,9 @@ def train_agent():
             current_step = 0
             while current_step < TOTAL_TIMESTEPS:
                 epsilon = linear_schedule(EPSILON_START, EPSILON_END, EPSILON_DECAY_STEPS, current_step)
-
                 actions = agent.act(state, epsilon)
+                
                 next_state, reward, terminated, truncated, info = envs.step(actions)
-
                 dones = terminated | truncated
                 episode_rewards += reward
 
@@ -66,20 +80,19 @@ def train_agent():
                 if current_step >= TRAINING_STARTS:
                     loss = agent.learn()
                     
-                pbar.set_postfix(eps=f"{epsilon:.3f}", loss=f"{loss:.4f}", refresh=False)
-
                 
-                # 7. --- Handle Episode Termination and Logging ---
+                # --- Handle Episode Termination and Logging ---
                 finished_rewards = []
-
-                for i, done in enumerate(terminated | truncated):
+                
+                for i, done in enumerate(dones):
                     if done:
                         episodes += 1
                         finished_rewards.append(episode_rewards[i])
-                        episode_rewards[i] = 0  # reset for next episode
+                        episode_rewards[i] = 0 
 
                 if finished_rewards:
                     scores_window.extend(finished_rewards)
+                    
                     last_avg_score = np.mean(scores_window)
                     last_max_score = np.max(scores_window)
                     last_episodes = episodes
@@ -91,13 +104,13 @@ def train_agent():
                         save_path = f"{LOG_FOLDER}/{LOG_CURRENT_BEST_MODEL_AS}{int(last_avg_score)}.pth"
                         agent.q_network.save_checkpoint(save_path)
 
-                # --- Update progress bar every loop but with cached values ---
                 pbar.set_postfix(
                     eps=f"{last_epsilon:.3f}",
                     loss=f"{last_loss:.4f}",
                     avgR=f"{last_avg_score:.1f}",
                     maxR=f"{last_max_score:.0f}",
-                    ep=f"{last_episodes}"
+                    ep=f"{last_episodes}",
+                    refresh=False
                 )
 
                 if current_step % LOG_EVERY_N_STEPS == 0:
@@ -111,8 +124,6 @@ def train_agent():
                             round(last_max_score, 5),
                             round(last_loss, 5)
                         ])
-
-                pbar.update(N_ENVS)
 
         
     except KeyboardInterrupt:

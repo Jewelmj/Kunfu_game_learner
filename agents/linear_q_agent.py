@@ -1,0 +1,99 @@
+import torch
+import torch.nn.functional as F
+import numpy as np
+import random
+from models.linear_q_network import LinearQNetwork
+from config import GAMMA, BATCH_SIZE, DEVICE, TARGET_UPDATE_FREQ
+from memory.replay_buffer import ReplayBuffer
+
+class LinearAgent:
+    def __init__(self, action_size, buffer_size, lr):
+        
+        self.action_size = action_size
+        self.gamma = GAMMA
+        self.batch_size = BATCH_SIZE
+        self.update_count = 0
+
+        # --- Networks ---
+        self.q_network = LinearQNetwork(action_size).to(DEVICE)
+        self.target_network = LinearQNetwork(action_size).to(DEVICE)
+        self.target_network.load_state_dict(self.q_network.state_dict())
+        self.target_network.eval()
+
+        self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=lr)
+        self.memory = ReplayBuffer(buffer_size)
+
+    def act(self, state, epsilon):
+        """
+        Performs an epsilon-greedy action selection, handling both single and batch states.
+        """
+        is_single_state = (state.ndim == 3)
+        
+        if is_single_state:
+            state_batch = state[np.newaxis, ...]
+        else:
+            state_batch = state
+            
+        # Epsilon-greedy exploration
+        if random.random() < epsilon:
+            num_actions = state_batch.shape[0]
+            random_actions = np.random.randint(self.action_size, size=num_actions)
+            return random_actions[0] if is_single_state else random_actions
+        
+        # Exploitation
+        else:
+            state_tensor = torch.from_numpy(state_batch).float().to(DEVICE)
+            
+            self.q_network.eval()
+            with torch.no_grad():
+                q_values = self.q_network(state_tensor).cpu().data.numpy()
+            self.q_network.train()
+            
+            best_actions = np.argmax(q_values, axis=1)
+            
+            return best_actions[0].item() if is_single_state else best_actions
+
+    def save_step(self, state, action, reward, next_state, done):
+        """Saves a single transition step to the replay buffer."""
+        self.memory.add(state, action, reward, next_state, done)
+
+    def learn(self):
+        """Performs one optimization step."""
+        if self.memory.size < self.batch_size:
+            return 0.0
+
+        states, actions, rewards, next_states, dones = self.memory.sample(self.batch_size)
+
+        # Convert numpy arrays to PyTorch tensors
+        states = torch.from_numpy(states).float().to(DEVICE)
+        actions = torch.from_numpy(actions).long().to(DEVICE)
+        rewards = torch.from_numpy(rewards).float().to(DEVICE)
+        next_states = torch.from_numpy(next_states).float().to(DEVICE)
+        dones = torch.from_numpy(dones).float().to(DEVICE)
+
+        actions = actions.unsqueeze(-1)
+        rewards = rewards.unsqueeze(-1)
+        dones = dones.unsqueeze(-1)
+
+        q_currents = self.q_network(states).gather(1, actions)
+
+        with torch.no_grad():
+            q_targets_next = self.target_network(next_states).max(1)[0].unsqueeze(-1)
+        
+        # TD Target
+        q_targets = rewards + (self.gamma * q_targets_next * (1 - dones))
+
+        loss = F.mse_loss(q_currents, q_targets)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        self.update_target_network()
+
+        return loss.item()
+
+    def update_target_network(self):
+        self.update_count += 1
+        if self.update_count % TARGET_UPDATE_FREQ == 0:
+            self.target_network.load_state_dict(self.q_network.state_dict())
