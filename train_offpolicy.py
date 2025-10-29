@@ -20,13 +20,11 @@ def linear_schedule(start_e, end_e, decay_steps, current_step):
 
 def train_agent():
     envs = make_parallel_env(N_ENVS)
-
-    action_size = envs.single_action_space.n
     
     AgentClass = get_agent_class(AGENT_TYPE, False)
-    agent = AgentClass(action_size=len(ALLOWED_ACTIONS), rollout_size=PPO_ROLLOUT_STEPS * N_ENVS)
+    agent = AgentClass(len(ALLOWED_ACTIONS), BUFFER_SIZE, LEARNING_RATE)
     
-    print(f"Agent initialized: {AGENT_TYPE}. Total Actions: {action_size}")
+    print(f"Agent initialized: {AGENT_TYPE}. Total Actions: {ALLOWED_ACTIONS}")
     print(f"Using {N_ENVS} parallel environments for faster data collection.")
     
     episodes = 0

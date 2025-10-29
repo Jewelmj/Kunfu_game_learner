@@ -12,13 +12,12 @@ from utils.agent_loader import get_agent_class
 
 def train_ppo():
     envs = make_parallel_env(N_ENVS)
-    action_size = envs.single_action_space.n
 
     AgentClass = get_agent_class(AGENT_TYPE, True)
     agent = AgentClass(action_size=len(ALLOWED_ACTIONS), rollout_size=PPO_ROLLOUT_STEPS * N_ENVS)
     
     print(f"PPO Training started — using {N_ENVS} parallel environments")
-    print(f"Action size: {action_size}, Rollout length: {PPO_ROLLOUT_STEPS}")
+    print(f"Action size: {ALLOWED_ACTIONS}, Rollout length: {PPO_ROLLOUT_STEPS}")
 
     state, info = envs.reset(seed=42)
     scores_window = deque(maxlen=100)
