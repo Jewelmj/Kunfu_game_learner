@@ -24,7 +24,7 @@ def train_agent():
     action_size = envs.single_action_space.n
     
     AgentClass = get_agent_class(AGENT_TYPE, False)
-    agent = AgentClass(action_size, BUFFER_SIZE, LEARNING_RATE)
+    agent = AgentClass(action_size=len(ALLOWED_ACTIONS), rollout_size=PPO_ROLLOUT_STEPS * N_ENVS)
     
     print(f"Agent initialized: {AGENT_TYPE}. Total Actions: {action_size}")
     print(f"Using {N_ENVS} parallel environments for faster data collection.")

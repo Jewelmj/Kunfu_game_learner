@@ -18,6 +18,12 @@ pip install -r requirements.txt
 ```bash
 pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 ```
+### Note on Atari ROMs:
+> If the code doesn't run or you get an error about missing ROMs, please check if you have registered the Atari ROMs.
+```bash
+pip install autorom
+python -m AutoROM --accept-license
+```
 ## Usage:
 1. running the base game use this command(Manual Play):
 > Play the Atari game manually to understand controls and environment dynamics.

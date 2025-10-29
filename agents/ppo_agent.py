@@ -50,16 +50,24 @@ class PPOAgent:
             return action_np[0].item(), log_prob_np[0].item(), value_np[0].item()
         else:
             return action_np, log_prob_np, value_np
+        
+    def act(self, state, epsilon=0.0):
+        """
+        Provides a simple 'act' interface for evaluation/video generation.
+        Epsilon is ignored as PPO is not epsilon-greedy.
+        """
+        action, _, _ = self.get_action_and_value(state)
+        return action
 
     def save_step(self, state, action, reward, done, log_prob, value):
         self.memory.add(state, action, reward, done, log_prob, value)
 
-    def learn(self, last_value):
+    def learn(self, last_values):
         """
         Performs the PPO optimization loop over the collected trajectory.
         `last_value` is the predicted value V(s_T) of the final state in the trajectory.
         """
-        self.memory.compute_returns_and_advantages(last_value)
+        self.memory.compute_returns_and_advantages(last_values)
         
         total_policy_loss = 0
         total_value_loss = 0

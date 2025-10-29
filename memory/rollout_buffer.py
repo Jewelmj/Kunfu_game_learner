@@ -10,13 +10,13 @@ class RolloutBuffer:
     """
     def __init__(self, buffer_size, state_shape):
         self.states = np.empty((buffer_size, *state_shape), dtype=np.uint8)
-        self.actions = np.empty(buffer_size, dtype=np.int16)
-        self.rewards = np.empty(buffer_size, dtype=np.float16)
+        self.actions = np.empty(buffer_size, dtype=np.int32)  
+        self.rewards = np.empty(buffer_size, dtype=np.float32)  
         self.dones = np.empty(buffer_size, dtype=np.bool_)
-        self.log_probs = np.empty(buffer_size, dtype=np.float16)
-        self.values = np.empty(buffer_size, dtype=np.float16)
-        self.returns = np.empty(buffer_size, dtype=np.float16)
-        self.advantages = np.empty(buffer_size, dtype=np.float16)
+        self.log_probs = np.empty(buffer_size, dtype=np.float32)  
+        self.values = np.empty(buffer_size, dtype=np.float32)  
+        self.returns = np.empty(buffer_size, dtype=np.float32) 
+        self.advantages = np.empty(buffer_size, dtype=np.float32)
         self.ptr = 0
         self.max_size = buffer_size
 
@@ -24,29 +24,32 @@ class RolloutBuffer:
         if self.ptr >= self.max_size:
             raise IndexError("Rollout buffer exceeded max capacity.")
             
-        idx = self.ptr % self.max_size  # circular indexing
-        self.states[idx] = state
-        self.actions[idx] = action
-        self.rewards[idx] = reward
-        self.dones[idx] = done
-        self.log_probs[idx] = log_prob
-        self.values[idx] = value
-        self.ptr = (self.ptr + 1) % self.max_size
+        self.states[self.ptr] = state
+        self.actions[self.ptr] = action
+        self.rewards[self.ptr] = reward
+        self.dones[self.ptr] = done
+        self.log_probs[self.ptr] = log_prob
+        self.values[self.ptr] = value
+
+        self.ptr += 1
 
     def clear(self):
         self.ptr = 0
 
-    def compute_returns_and_advantages(self, last_value):
+    def compute_returns_and_advantages(self, last_values):
         """
         Computes the Generalised Advantage Estimate (GAE) and Returns
         for the collected trajectory.
         """
+        if np.any(np.isnan(last_values)):
+            print("WARNING: last_value contains NaN!")
+            last_values = 0.0
         last_gae_lam = 0
         
         for t in reversed(range(self.ptr)):
             if t == self.ptr - 1:
                 next_non_terminal = 1.0 - self.dones[t]
-                next_value = last_value
+                next_value = last_values if np.isscalar(last_values) else last_values[t % len(last_values)]
             else:
                 next_non_terminal = 1.0 - self.dones[t+1]
                 next_value = self.values[t+1]

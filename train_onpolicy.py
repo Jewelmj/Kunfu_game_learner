@@ -5,7 +5,7 @@ import tqdm
 import csv
 from collections import deque
 
-from config import DEVICE, N_ENVS, AGENT_TYPE, PPO_ROLLOUT_STEPS, LOG_FILE, TOTAL_TIMESTEPS, LOG_CURRENT_BEST_MODEL_AS, LOG_FINAL_BEST_MODEL_AS, LOG_EVERY_N_STEPS
+from config import DEVICE, N_ENVS, AGENT_TYPE, ALLOWED_ACTIONS, PPO_ROLLOUT_STEPS, LOG_FILE, TOTAL_TIMESTEPS, LOG_CURRENT_BEST_MODEL_AS, LOG_FINAL_BEST_MODEL_AS, LOG_EVERY_N_STEPS
 from utils.wrapper import make_parallel_env
 from utils.agent_loader import get_agent_class
 
@@ -15,7 +15,7 @@ def train_ppo():
     action_size = envs.single_action_space.n
 
     AgentClass = get_agent_class(AGENT_TYPE, True)
-    agent = AgentClass(action_size, rollout_size=PPO_ROLLOUT_STEPS)
+    agent = AgentClass(action_size=len(ALLOWED_ACTIONS), rollout_size=PPO_ROLLOUT_STEPS * N_ENVS)
     
     print(f"PPO Training started — using {N_ENVS} parallel environments")
     print(f"Action size: {action_size}, Rollout length: {PPO_ROLLOUT_STEPS}")
@@ -65,7 +65,7 @@ def train_ppo():
                     _, last_values = agent.net(torch.tensor(state, dtype=torch.float32, device=DEVICE))
                 last_values = last_values.squeeze(-1).cpu().numpy()
 
-                avg_loss = agent.learn(last_values.mean())
+                avg_loss = agent.learn(last_values)
                 avg_reward = np.mean(scores_window) if scores_window else 0.0
                 max_reward = np.max(scores_window) if scores_window else 0.0
 

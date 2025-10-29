@@ -12,34 +12,31 @@ class ActorCriticNetwork(nn.Module):
         """
         super(ActorCriticNetwork, self).__init__()
 
-        # --- Shared CNN Backbone (Same as DQN QNetwork) ---
         self.conv1 = nn.Conv2d(in_channels=NUM_FRAMES, out_channels=CONV_OUT_CHANNELS[0], kernel_size=CONV_KERNELS[0], stride=CONV_STRIDES[0])
         self.conv2 = nn.Conv2d(in_channels=CONV_OUT_CHANNELS[0], out_channels=CONV_OUT_CHANNELS[1], kernel_size=CONV_KERNELS[1], stride=CONV_STRIDES[1])
         self.conv3 = nn.Conv2d(in_channels=CONV_OUT_CHANNELS[1], out_channels=CONV_OUT_CHANNELS[2], kernel_size=CONV_KERNELS[2], stride=CONV_STRIDES[2]) 
         
-        # --- Actor (Policy) Head ---
         self.actor_fc1 = nn.Linear(CONV_OUT_SIZE, FC_UNITS1)
-        self.actor_head = nn.Linear(FC_UNITS1, action_size) # Outputs logits for policy
+        self.actor_fc2 = nn.Linear(FC_UNITS1, FC_UNITS2)
+        self.actor_head = nn.Linear(FC_UNITS2, action_size) 
 
-        # --- Critic (Value) Head ---
         self.critic_fc1 = nn.Linear(CONV_OUT_SIZE, FC_UNITS1)
-        self.critic_head = nn.Linear(FC_UNITS1, 1) # Outputs state value V(s)
+        self.critic_fc2 = nn.Linear(FC_UNITS1, FC_UNITS2)
+        self.critic_head = nn.Linear(FC_UNITS2, 1) 
 
     def forward(self, x):
-        # x shape: (Batch, C, H, W)
-
-        # 1. Feature Extraction (CNN)
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
-        x = x.reshape(x.size(0), -1) # Flatten to (Batch, CONV_OUT_SIZE)
+        x = x.reshape(x.size(0), -1)
 
-        # 2. Actor Branch
         actor_x = F.relu(self.actor_fc1(x))
+        actor_x = F.relu(self.actor_fc2(actor_x))
         action_logits = self.actor_head(actor_x)
 
         # 3. Critic Branch
         critic_x = F.relu(self.critic_fc1(x))
+        critic_x = F.relu(self.critic_fc2(critic_x))
         value_estimate = self.critic_head(critic_x)
 
         return action_logits, value_estimate

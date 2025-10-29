@@ -26,16 +26,37 @@ def evaluate_agent(model_path):
         AgentClass = get_agent_class(AGENT_TYPE, True)
     else:
         AgentClass = get_agent_class(AGENT_TYPE, False)
-    agent = AgentClass(action_size, buffer_size=1000, lr=0.0)  # irrelevent 2 number.
+    agent = AgentClass(action_size, 1000, 0.0)
     
-    if not hasattr(agent, 'q_network'):
-        print(f"Error: Agent {AGENT_TYPE} does not have a 'q_network' attribute to load.")
-        return
-        
     try:
-        agent.q_network.load_state_dict(torch.load(model_path, map_location=DEVICE))
-        agent.q_network.eval() 
+        if AGENT_TYPE == "PPO":
+            # The network attribute on your PPOAgent is named 'net'
+            network_attribute_name = "net" 
+            
+            if not hasattr(agent, network_attribute_name):
+                print(f"Error: Agent {AGENT_TYPE} does not have '{network_attribute_name}'.")
+                print("This should not happen, please check ppo_agent.py.")
+                return
+            
+            # Get the network object using its name
+            network = getattr(agent, network_attribute_name)
+            
+            # Load the weights and set to eval mode
+            network.load_state_dict(torch.load(model_path, map_location=DEVICE))
+            network.eval()
+            print(f"Found and loaded network attribute: '{network_attribute_name}'")
+        
+        else:
+            # Original logic for Q-based agents (e.g., DQN)
+            if not hasattr(agent, 'q_network'):
+                print(f"Error: Agent {AGENT_TYPE} does not have a 'q_network' attribute.")
+                return
+                
+            agent.q_network.load_state_dict(torch.load(model_path, map_location=DEVICE))
+            agent.q_network.eval() 
+        
         print(f"Successfully loaded model weights from {model_path}")
+    
     except Exception as e:
         print(f"Error loading model weights: {e}")
         return

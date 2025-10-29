@@ -1,16 +1,19 @@
 import gymnasium as gym
+from gymnasium.core import ActionWrapper
+from gymnasium.spaces import Discrete
 import ale_py # for gym to recoganise our game.
 import numpy as np
 import cv2
-from config import RENDER_MODE_HUMAN, RENDER_MODE_AGENT, FRAME_STACK_K, FRAME_SKIP, N_ENVS, ENV_ID, NUM_FRAMES
+from config import RENDER_MODE_HUMAN, RENDER_MODE_AGENT, NUM_FRAMES, FRAME_SKIP, N_ENVS, ENV_ID, ALLOWED_ACTIONS
 
 cv2.ocl.setUseOpenCL(False)
 
 def make_env_human(env_id):
     return gym.make(env_id, render_mode=RENDER_MODE_HUMAN)
 
-def _make_training_env(env_id, frame_stack_k=FRAME_STACK_K):
+def _make_training_env(env_id, frame_stack_k=NUM_FRAMES):
     env = gym.make(env_id, render_mode=RENDER_MODE_AGENT, frameskip=1)
+    env = MapActionWrapper(env, ALLOWED_ACTIONS)
     env = gym.wrappers.AtariPreprocessing(
         env,
         frame_skip=FRAME_SKIP,
@@ -26,6 +29,27 @@ def _make_single_env():
 
 def make_parallel_env(n_envs=N_ENVS):
     return gym.vector.AsyncVectorEnv([lambda: _make_single_env() for _ in range(n_envs)])
+
+class MapActionWrapper(ActionWrapper):
+    """
+    Maps a discrete action space (0...N-1) to a specific list of actions
+    from the environment's full action space.
+    """
+    def __init__(self, env, action_map: list):
+        super().__init__(env)
+        self._action_map = action_map
+        
+        # Set the new, smaller action space for the agent
+        self.action_space = Discrete(len(self._action_map))
+
+    def action(self, action):
+        """
+        Takes the agent's action (e.g., 0) and maps it to the
+        environment's corresponding action (e.g., self._action_map[0]).
+        """
+        # 'action' is the discrete action (0, 1, 2...) from the agent
+        # We return the corresponding "real" action from our map
+        return self._action_map[action]
 
 class HighResRenderWrapper(gym.Wrapper):
     """
