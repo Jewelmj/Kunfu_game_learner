@@ -24,6 +24,7 @@ def train_ppo():
     best_avg_score = -np.inf
     episode_rewards = np.zeros(N_ENVS, dtype=np.float32)
     episodes = 0
+    last_log_step = 0
 
     with open(LOG_FILE, mode="w", newline="") as f:
         writer = csv.writer(f)
@@ -64,6 +65,13 @@ def train_ppo():
                     _, last_values = agent.net(torch.tensor(state, dtype=torch.float32, device=DEVICE))
                 last_values = last_values.squeeze(-1).cpu().numpy()
 
+                if np.any(np.isnan(last_values)) or np.any(np.isinf(last_values)):
+                    print(f"WARNING: Invalid last_values detected! NaN: {np.any(np.isnan(last_values))}, Inf: {np.any(np.isinf(last_values))}")
+                    last_values = np.nan_to_num(last_values, nan=0.0, posinf=0.0, neginf=0.0)
+
+                if np.abs(last_values).max() > 1000:
+                    print(f"WARNING: Extreme last_values: {last_values}")
+
                 avg_loss = agent.learn(last_values)
                 avg_reward = np.mean(scores_window) if scores_window else 0.0
                 max_reward = np.max(scores_window) if scores_window else 0.0
@@ -81,7 +89,7 @@ def train_ppo():
                     refresh=False,
                 )
 
-                if total_steps % LOG_EVERY_N_STEPS == 0:
+                if total_steps - last_log_step >= LOG_EVERY_N_STEPS:
                     with open(LOG_FILE, mode="a", newline="") as f:
                         writer = csv.writer(f)
                         writer.writerow([
@@ -91,6 +99,7 @@ def train_ppo():
                             round(max_reward, 5),
                             round(avg_loss, 5)
                         ])
+                    last_log_step = total_steps
 
     except KeyboardInterrupt:
         tqdm.tqdm.write("\nTraining interrupted by user. Saving final model...")

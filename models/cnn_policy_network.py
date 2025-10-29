@@ -25,6 +25,7 @@ class ActorCriticNetwork(nn.Module):
         self.critic_head = nn.Linear(FC_UNITS2, 1) 
 
     def forward(self, x):
+        x = x / 255.0
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))

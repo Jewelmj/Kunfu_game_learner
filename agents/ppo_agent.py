@@ -75,7 +75,8 @@ class PPOAgent:
         num_minibatches = 0
         
         for _ in range(PPO_EPOCHS):
-            for states, actions, returns, advantages, old_log_probs in self.memory.sample_minibatches():
+            for states, actions, returns, advantages, old_log_probs, old_values in self.memory.sample_minibatches():
+    
                 new_logits, new_values = self.net(states)
                 dist = Categorical(logits=new_logits)
                 new_log_probs = dist.log_prob(actions.squeeze(-1)).unsqueeze(-1)
@@ -84,7 +85,16 @@ class PPOAgent:
                 surr1 = ratio * advantages
                 surr2 = torch.clamp(ratio, 1.0 - PPO_CLIP_EPSILON, 1.0 + PPO_CLIP_EPSILON) * advantages
                 policy_loss = -torch.min(surr1, surr2).mean()
-                value_loss = F.mse_loss(new_values, returns)
+
+                v_loss_unclipped = (new_values - returns) ** 2
+                v_clipped = old_values + torch.clamp(
+                    new_values - old_values,
+                    -PPO_CLIP_EPSILON,
+                    PPO_CLIP_EPSILON
+                )
+                v_loss_clipped = (v_clipped - returns) ** 2
+                value_loss = 0.5 * torch.max(v_loss_unclipped, v_loss_clipped).mean()
+
                 entropy_loss = -dist.entropy().mean()
                 total_loss = policy_loss + PPO_VF_COEF * value_loss + PPO_ENT_COEF * entropy_loss
                 

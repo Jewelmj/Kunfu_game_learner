@@ -40,24 +40,41 @@ class RolloutBuffer:
         """
         Computes the Generalised Advantage Estimate (GAE) and Returns
         for the collected trajectory.
+        
+        last_values: array of shape (N_ENVS,) containing V(s_T) for each environment
         """
         if np.any(np.isnan(last_values)):
-            print("WARNING: last_value contains NaN!")
-            last_values = 0.0
-        last_gae_lam = 0
+            print("WARNING: last_values contains NaN!")
+            last_values = np.nan_to_num(last_values, nan=0.0)
         
-        for t in reversed(range(self.ptr)):
-            if t == self.ptr - 1:
-                next_non_terminal = 1.0 - self.dones[t]
-                next_value = last_values if np.isscalar(last_values) else last_values[t % len(last_values)]
+        if np.isscalar(last_values):
+            last_values = np.array([last_values])
+        
+        n_envs = len(last_values)
+        steps_per_env = self.ptr // n_envs
+        
+        rewards = self.rewards[:self.ptr].reshape(steps_per_env, n_envs)
+        dones = self.dones[:self.ptr].reshape(steps_per_env, n_envs)
+        values = self.values[:self.ptr].reshape(steps_per_env, n_envs)
+        
+        advantages = np.zeros((steps_per_env, n_envs), dtype=np.float32)
+        last_gae_lam = np.zeros(n_envs, dtype=np.float32)
+        
+        for t in reversed(range(steps_per_env)):
+            if t == steps_per_env - 1:
+                next_non_terminal = 1.0 - dones[t]
+                next_values = last_values
             else:
-                next_non_terminal = 1.0 - self.dones[t+1]
-                next_value = self.values[t+1]
-
-            delta = self.rewards[t] + PPO_GAMMA * next_value * next_non_terminal - self.values[t]
-            self.advantages[t] = last_gae_lam = delta + PPO_GAMMA * PPO_GAE_LAMBDA * next_non_terminal * last_gae_lam
-
+                next_non_terminal = 1.0 - dones[t]
+                next_values = values[t + 1]
+            
+            delta = rewards[t] + PPO_GAMMA * next_values * next_non_terminal - values[t]
+            
+            advantages[t] = last_gae_lam = delta + PPO_GAMMA * PPO_GAE_LAMBDA * next_non_terminal * last_gae_lam
+        
+        self.advantages[:self.ptr] = advantages.flatten()
         self.returns[:self.ptr] = self.advantages[:self.ptr] + self.values[:self.ptr]
+        
         self.advantages[:self.ptr] = (self.advantages[:self.ptr] - self.advantages[:self.ptr].mean()) / (self.advantages[:self.ptr].std() + 1e-8)
 
     def sample_minibatches(self):
@@ -75,4 +92,5 @@ class RolloutBuffer:
                 torch.from_numpy(self.returns[batch_indices]).float().to(DEVICE).unsqueeze(-1),
                 torch.from_numpy(self.advantages[batch_indices]).float().to(DEVICE).unsqueeze(-1),
                 torch.from_numpy(self.log_probs[batch_indices]).float().to(DEVICE).unsqueeze(-1),
+                torch.from_numpy(self.values[batch_indices]).float().to(DEVICE).unsqueeze(-1)
             )
