@@ -4,7 +4,7 @@ from gymnasium.spaces import Discrete
 import ale_py # for gym to recoganise our game.
 import numpy as np
 import cv2
-from config import RENDER_MODE_HUMAN, RENDER_MODE_AGENT, NUM_FRAMES, FRAME_SKIP, N_ENVS, ENV_ID, ALLOWED_ACTIONS
+from config import RENDER_MODE_HUMAN, RENDER_MODE_AGENT, NUM_FRAMES, FRAME_SKIP, N_ENVS, ENV_ID, ALLOWED_ACTIONS, FRAME_HEIGHT
 
 cv2.ocl.setUseOpenCL(False)
 
@@ -16,6 +16,7 @@ def _make_training_env(env_id, frame_stack_k=NUM_FRAMES):
     env = MapActionWrapper(env, ALLOWED_ACTIONS)
     env = gym.wrappers.AtariPreprocessing(
         env,
+        screen_size=FRAME_HEIGHT,
         frame_skip=FRAME_SKIP,
         grayscale_obs=True,
         scale_obs=True,
@@ -39,16 +40,9 @@ class MapActionWrapper(ActionWrapper):
         super().__init__(env)
         self._action_map = action_map
         
-        # Set the new, smaller action space for the agent
         self.action_space = Discrete(len(self._action_map))
 
     def action(self, action):
-        """
-        Takes the agent's action (e.g., 0) and maps it to the
-        environment's corresponding action (e.g., self._action_map[0]).
-        """
-        # 'action' is the discrete action (0, 1, 2...) from the agent
-        # We return the corresponding "real" action from our map
         return self._action_map[action]
 
 class HighResRenderWrapper(gym.Wrapper):

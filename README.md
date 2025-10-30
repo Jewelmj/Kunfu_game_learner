@@ -92,7 +92,7 @@ Here's the porpouse of each file:
 2. Algorithm: DQN with target network and experience  replay, Linear Agent (Simpler baseline model).
 3. Preprocessing: Standard Atari preprocessing, including 4-frame skipping and stacking 4 consecutive frame, Life-based termination for stable episodic resets.
 ## Results and Performance:
-Training logs and videos are automatically saved under:
+### Training logs and videos are automatically saved under:
 ```bash
 results/
 ├── saved_models/
@@ -103,6 +103,23 @@ results/
 └── video/
     └── evaluation_video.mp4
 ```
+### Training Curves:
+1. PPO version 2 (v3):
+> note: after fixing exploding gradient issue this is the first version.
+Architecture: { size: 84 × 84, Conv layers: [(32,8,4), (64,4,2), (64,3,1)], FC layers: [512, 512]}
+hyper parematers: {PPO_ROLLOUT_STEPS = 2048, PPO_EPOCHS = 4 ,PPO_LR = 0.0003, PPO_BATCH_SIZE = 256, PPO_GAMMA = 0.99, PPO_GAE_LAMBDA = 0.95, PPO_CLIP_EPSILON = 0.2 ,PPO_VF_COEF = 0.5,PPO_ENT_COEF = 0.01}
+| ![Reward Curve](results/plots/PPO_v2_avg&max.png) | ![Loss Curve](results/plots/PPO_v2_loss.png) |
+2. PPO version 3 (v3):
+> note: model seems to not be able to capture the image information expecialy the ranged attackers etc, thus tring increased CNN layers and resolution.
+Architecture: { size: 96 × 96, Conv layers: [(32,8,4), (64,4,2), (64,3,1), (64,3,1)], FC layers: [512, 512]}
+hyper parematers: {PPO_ROLLOUT_STEPS = 2048, PPO_EPOCHS = 4,PPO_LR = 0.0003,PPO_BATCH_SIZE = 256,PPO_GAMMA = 0.99,PPO_GAE_LAMBDA = 0.95,PPO_CLIP_EPSILON = 0.2,PPO_VF_COEF = 0.5,PPO_ENT_COEF = 0.01}
+| ![Reward Curve](results/plots/PPO_v3_avg&max.png) | ![Loss Curve](results/plots/PPO_v3_loss.png) |
+> conclusion: model did perform better with the increased CNN layers (especialy by looking at the video of agents playing)
+3. PPO version 4 (v4):
+Architecture: { size: 120 × 120, Conv layers: [(32,6,3), (64,5,2), (16,4,1), (16,3,1), (16,2,1)], FC layers: [670, 480, 128]}
+hyper parematers: {PPO_ROLLOUT_STEPS = 2048, PPO_EPOCHS = 4, PPO_LR = 0.0003, PPO_BATCH_SIZE = 256, PPO_GAMMA = 0.99, PPO_GAE_LAMBDA = 0.95, PPO_CLIP_EPSILON = 0.2, PPO_VF_COEF = 0.5, PPO_ENT_COEF = 0.01}
+| ![Reward Curve](results/plots/PPO_v4_avg&max.png) | ![Loss Curve](results/plots/PPO_v4_loss.png) |
+> conclusion: the extra resalution/CNN layers didnt make a diffrence.
 ## 🎮 Demo Video
 Watch the trained agent play Kung Fu Master
-[![Watch the video]](https://youtube.com/shorts/GNXz_VnIido?feature=share>)
+[![Watch the video]](https://youtube.com/shorts/wbKCYEGEjEg)

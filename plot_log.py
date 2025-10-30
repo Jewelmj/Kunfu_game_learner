@@ -3,10 +3,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 import os
+from scipy.ndimage import uniform_filter1d
 
-from config import LOG_FILES_TO_PLOT
+from config import *
 
-plt.style.use('seaborn-v0_8-whitegrid')
+plt.style.use(PLOT_STYLE)
+
+def smooth_data(data, window):
+    """Apply moving average smoothing."""
+    if window <= 1 or len(data) < window:
+        return data
+    return uniform_filter1d(data, size=window, mode='nearest')
+
 
 def load_log_file(file_path):
     """Load CSV or TSV file safely."""
@@ -24,14 +32,39 @@ def load_log_file(file_path):
 
 def annotate_final_point(ax, x, y, label, color):
     """Add annotation for the final value on the line."""
-    ax.scatter(x, y, color=color, s=60, edgecolor="black", zorder=5)
-    ax.annotate(f"{label}: {y:.2f}",
+    ax.scatter(x, y, color=color, s=80, edgecolor="white", linewidth=2, zorder=5)
+    ax.annotate(f"{label}\n{y:.2f}",
                 (x, y),
                 textcoords="offset points",
-                xytext=(8, 5),
-                fontsize=9,
+                xytext=(10, 8),
+                fontsize=10,
                 color=color,
-                weight="bold")
+                weight="bold",
+                bbox=dict(boxstyle="round,pad=0.4", facecolor='white', alpha=0.8, edgecolor=color, linewidth=1.5))
+
+
+def set_axis_limits(ax, x_min, x_max, y_min, y_max):
+    """Set axis limits if specified."""
+    if x_min is not None or x_max is not None:
+        ax.set_xlim(left=x_min, right=x_max)
+    if y_min is not None or y_max is not None:
+        ax.set_ylim(bottom=y_min, top=y_max)
+
+
+def configure_plot_aesthetics(ax, title, xlabel, ylabel):
+    """Apply consistent aesthetics to plot."""
+    ax.set_title(title, fontsize=18, fontweight='bold', pad=15)
+    ax.set_xlabel(xlabel, fontsize=14, fontweight='bold')
+    ax.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+    # Format X-axis as plain numbers with commas
+    ax.ticklabel_format(style='plain', axis='x')
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
+    ax.tick_params(labelsize=11)
+    ax.grid(True, linestyle="--", alpha=PLOT_GRID_ALPHA, linewidth=1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_linewidth(1.5)
+    ax.spines['bottom'].set_linewidth(1.5)
 
 
 def plot_training_logs(log_files, save=False):
@@ -46,107 +79,130 @@ def plot_training_logs(log_files, save=False):
         print("❌ No valid log files to plot.")
         return
 
-    colors = plt.cm.tab10(np.linspace(0, 1, len(valid_logs)))
+    n_logs = len(valid_logs)
+    colors = PLOT_COLORS[:n_logs] if n_logs <= len(PLOT_COLORS) else plt.cm.tab20(np.linspace(0, 1, n_logs))
 
-    # Plot 1: Epsilon vs Steps
-    fig_eps, ax_eps = plt.subplots(figsize=(12, 6))
-    for (i, (path, df)) in enumerate(valid_logs):
-        if 'epsilon' not in df.columns:
-            continue
-        label = os.path.basename(path).replace('_training_log', '').split('.')[0]
-        ax_eps.plot(df['step'], df['epsilon'], label=label, color=colors[i], linewidth=2)
-        annotate_final_point(ax_eps, df['step'].iloc[-1], df['epsilon'].iloc[-1], label, colors[i])
-    ax_eps.set_title("Epsilon Decay Over Training Steps", fontsize=16, pad=10)
-    ax_eps.set_xlabel("Steps", fontsize=13)
-    ax_eps.set_ylabel("Epsilon", fontsize=13)
-    ax_eps.legend()
-    ax_eps.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-    ax_eps.grid(True, linestyle="--", alpha=0.6)
-    fig_eps.tight_layout()
-
-    # Plot 2: Loss vs Steps
-    fig_loss, ax_loss = plt.subplots(figsize=(12, 6))
-    for (i, (path, df)) in enumerate(valid_logs):
-        label = os.path.basename(path).replace('_training_log', '').split('.')[0]
-        ax_loss.plot(df['step'], df['loss'], label=label, color=colors[i], linewidth=2)
-        annotate_final_point(ax_loss, df['step'].iloc[-1], df['loss'].iloc[-1], label, colors[i])
-    ax_loss.set_title("Training Loss Over Steps", fontsize=16, pad=10)
-    ax_loss.set_xlabel("Steps", fontsize=13)
-    ax_loss.set_ylabel("Loss", fontsize=13)
-    ax_loss.legend()
-    ax_loss.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-    ax_loss.grid(True, linestyle="--", alpha=0.6)
+    # ===== PLOT 1: Loss vs Steps =====
+    fig_loss, ax_loss = plt.subplots(figsize=PLOT_FIGSIZE)
+    
+    for i, (path, df) in enumerate(valid_logs):
+        label = os.path.basename(path).replace('_training_log', '').replace('.csv', '')
+        
+        steps = df['step'].values
+        loss = smooth_data(df['loss'].values, PLOT_SMOOTHING_WINDOW)
+        
+        ax_loss.plot(steps, loss, label=label, color=colors[i], 
+                    linewidth=PLOT_LINEWIDTH, alpha=PLOT_ALPHA)
+        annotate_final_point(ax_loss, steps[-1], loss[-1], label, colors[i])
+    
+    configure_plot_aesthetics(ax_loss, "Training Loss Progression", "Training Steps", "Loss")
+    set_axis_limits(ax_loss, PLOT_X_MIN, PLOT_X_MAX, PLOT_LOSS_Y_MIN, PLOT_LOSS_Y_MAX)
+    ax_loss.legend(loc='best', fontsize=11, framealpha=0.9, edgecolor='black')
     fig_loss.tight_layout()
 
-    # Plot 3: Rewards vs Steps
-    fig_rew, ax_rew = plt.subplots(figsize=(12, 6))
-    for (i, (path, df)) in enumerate(valid_logs):
-        label = os.path.basename(path).replace('_training_log', '').split('.')[0]
+    # ===== PLOT 2: Rewards vs Steps =====
+    fig_rew, ax_rew = plt.subplots(figsize=PLOT_FIGSIZE)
+    
+    for i, (path, df) in enumerate(valid_logs):
+        label = os.path.basename(path).replace('_training_log', '').replace('.csv', '')
         color = colors[i]
-
-        ax_rew.plot(df['step'], df['avg_reward'], label=f"{label} Avg", color=color, linestyle='-', linewidth=2)
-        ax_rew.plot(df['step'], df['max_reward'], label=f"{label} Max", color=color, linestyle='--', linewidth=2)
-
-        last_step = df['step'].iloc[-1]
-        last_avg = df['avg_reward'].iloc[-1]
-        last_max = df['max_reward'].iloc[-1]
-
-        avg_offset = np.std(df['avg_reward']) * 0.15
-        max_offset = -np.std(df['avg_reward']) * 0.15
-
-        ax_rew.scatter(last_step, last_avg, color=color, s=60, edgecolor="black", zorder=5)
-        ax_rew.annotate(f"{label} Avg: {last_avg:.1f}",
-                        (last_step, last_avg),
-                        textcoords="offset points",
-                        xytext=(10, avg_offset + 5),
-                        fontsize=9,
-                        color=color,
-                        weight="bold")
-
-        ax_rew.scatter(last_step, last_max, color=color, s=60, edgecolor="black", zorder=5)
-        ax_rew.annotate(f"{label} Max: {last_max:.1f}",
-                        (last_step, last_max),
-                        textcoords="offset points",
-                        xytext=(10, max_offset - 5),
-                        fontsize=9,
-                        color=color,
-                        weight="bold")
-
-        max_idx = df['avg_reward'].idxmax()
-        if not np.isnan(max_idx):
-            ax_rew.annotate(f"Peak {df['avg_reward'][max_idx]:.1f}",
-                            (df['step'][max_idx], df['avg_reward'][max_idx]),
-                            textcoords="offset points",
-                            xytext=(10, 20),
-                            arrowprops=dict(facecolor=color, shrink=0.05, width=1.5, headwidth=8, alpha=0.8),
-                            fontsize=9,
-                            color=color)
-
-    ax_rew.set_title("Average & Max Rewards Over Steps", fontsize=16, pad=10)
-    ax_rew.set_xlabel("Steps", fontsize=13)
-    ax_rew.set_ylabel("Reward", fontsize=13)
-    ax_rew.legend()
-    ax_rew.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-    ax_rew.grid(True, linestyle="--", alpha=0.6)
+        
+        steps = df['step'].values
+        avg_reward = smooth_data(df['avg_reward'].values, PLOT_SMOOTHING_WINDOW)
+        max_reward = smooth_data(df['max_reward'].values, PLOT_SMOOTHING_WINDOW)
+        
+        # Plot average reward (solid line)
+        ax_rew.plot(steps, avg_reward, label=f"{label} (Avg)", color=color, 
+                   linestyle='-', linewidth=PLOT_LINEWIDTH, alpha=PLOT_ALPHA)
+        
+        # Plot max reward (dashed line, lighter)
+        ax_rew.plot(steps, max_reward, label=f"{label} (Max)", color=color, 
+                   linestyle='--', linewidth=PLOT_LINEWIDTH - 0.5, alpha=PLOT_ALPHA * 0.7)
+        
+        # Annotate final points
+        last_step = steps[-1]
+        last_avg = avg_reward[-1]
+        last_max = max_reward[-1]
+        
+        ax_rew.scatter(last_step, last_avg, color=color, s=80, edgecolor="white", 
+                      linewidth=2, zorder=5, marker='o')
+        ax_rew.scatter(last_step, last_max, color=color, s=80, edgecolor="white", 
+                      linewidth=2, zorder=5, marker='s')
+        
+        # Smart annotation positioning
+        avg_offset = 15 if i % 2 == 0 else -25
+        max_offset = -25 if i % 2 == 0 else 15
+        
+        ax_rew.annotate(f"{last_avg:.1f}",
+                       (last_step, last_avg),
+                       textcoords="offset points",
+                       xytext=(12, avg_offset),
+                       fontsize=10,
+                       color=color,
+                       weight="bold",
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', 
+                                alpha=0.9, edgecolor=color, linewidth=1.5))
+        
+        ax_rew.annotate(f"{last_max:.1f}",
+                       (last_step, last_max),
+                       textcoords="offset points",
+                       xytext=(12, max_offset),
+                       fontsize=10,
+                       color=color,
+                       weight="bold",
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', 
+                                alpha=0.9, edgecolor=color, linewidth=1.5))
+        
+        # Mark peak average reward
+        max_idx = np.argmax(avg_reward)
+        peak_value = avg_reward[max_idx]
+        peak_step = steps[max_idx]
+        
+        ax_rew.annotate(f"Peak: {peak_value:.1f}",
+                       (peak_step, peak_value),
+                       textcoords="offset points",
+                       xytext=(15, 25),
+                       arrowprops=dict(
+                           arrowstyle='->', 
+                           color=color, 
+                           lw=2, 
+                           alpha=0.8,
+                           connectionstyle="arc3,rad=0.3"
+                       ),
+                       fontsize=10,
+                       color=color,
+                       weight="bold",
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', 
+                                alpha=0.9, edgecolor=color, linewidth=1.5))
+    
+    configure_plot_aesthetics(ax_rew, "Training Performance: Average & Maximum Rewards", 
+                            "Training Steps", "Reward")
+    set_axis_limits(ax_rew, PLOT_X_MIN, PLOT_X_MAX, PLOT_REWARD_Y_MIN, PLOT_REWARD_Y_MAX)
+    ax_rew.legend(loc='best', fontsize=10, framealpha=0.9, edgecolor='black', ncol=2)
     fig_rew.tight_layout()
 
+    # ===== Save or Show =====
     if save:
         out_path = "results/plots/"
         os.makedirs(out_path, exist_ok=True)
-        fig_eps.savefig(os.path.join(out_path, "epsilon_vs_steps.png"), dpi=300, bbox_inches='tight')
-        fig_loss.savefig(os.path.join(out_path, "loss_vs_steps.png"), dpi=300, bbox_inches='tight')
-        fig_rew.savefig(os.path.join(out_path, "reward_vs_steps.png"), dpi=300, bbox_inches='tight')
+        
+        fig_loss.savefig(os.path.join(out_path, "loss_vs_steps.png"), 
+                        dpi=PLOT_DPI, bbox_inches='tight', facecolor='white')
+        fig_rew.savefig(os.path.join(out_path, "reward_vs_steps.png"), 
+                       dpi=PLOT_DPI, bbox_inches='tight', facecolor='white')
         print(f"✅ Plots saved to {out_path}")
+        print(f"   - Resolution: {PLOT_DPI} DPI")
+        print(f"   - Smoothing window: {PLOT_SMOOTHING_WINDOW}")
     else:
         plt.show()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Plot training logs with nice annotations.")
+    parser = argparse.ArgumentParser(description="Plot training logs with enhanced styling.")
     parser.add_argument("--save", action="store_true", help="Save plots as PNG instead of showing.")
     args = parser.parse_args()
 
     if LOG_FILES_TO_PLOT:
         plot_training_logs(LOG_FILES_TO_PLOT, save=args.save)
     else:
-        print("❌ No log files specified. Please update LOG_FILES_TO_PLOT.")
+        print("❌ No log files specified. Please update LOG_FILES_TO_PLOT in config.py")
